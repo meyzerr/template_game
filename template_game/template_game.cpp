@@ -22,17 +22,20 @@ public:
     string name;
     string type;
     double value;
+    int id;
 
     item() {
         name = "none";
         type = "none";
         value = 0;
+        id = 0;
     }
 
     item(string pname, string ptype, double pvalue) {
         name = pname;
         type = ptype;
         value = pvalue;
+        id = 0;
     }
 
     void iname() {
@@ -46,9 +49,17 @@ public:
     }
 
     void ivalue() {
-        cout << "Введи стоимость предмета: " << endl;
-        cin >> value;
-        cin.ignore();
+        while (true) {
+            cout << "Введи стоимость предмета: " << endl;
+            cin >> value;
+            cin.ignore();
+            if (value > 0) {
+                break;
+            }
+            else {
+                cout << "Введите корректную стоимость!";
+            }
+        }
     }
 
     void input() {
@@ -61,23 +72,44 @@ public:
         cout << "Название для предмета: " << name << endl;
         cout << "Тип предмета: " << type << endl;
         cout << "Cтоимость предмета: " << value << endl;
+        cout << "ID предмета: " << id << endl;
+    }
+    friend ostream& operator<<(ostream& os, const item& item) {
+        os << item.name << endl;
+        os << item.type << endl;
+        os << item.value << endl;
+        os << item.id << endl;
+        return os;
+    }
+
+    friend istream& operator>>(istream& is, item& item) {
+        getline(is, item.name);
+        getline(is, item.type);
+        is >> item.value;
+        is >> item.id;
+        is.ignore();
+        return is;
     }
 };
+
 
 class character {
 public:
     string name;
     int level;
     vector<item> equipment;
+    int id;
 
     character() {
         name = "none";
         level = 1;
+        id = rand() % (10000000 - 1) + 1;
     }
 
     character(string pname) {
         name = pname;
         level = 1;
+        id = rand() % (10000000 - 1) + 1;
     }
 
     void iname() {
@@ -88,12 +120,13 @@ public:
     void output_info() {
         cout << "Имя персонажа: " << name << endl;
         cout << "Уровень персонажа: " << level << endl;
+        cout << "ID персонажа: " << id << endl;
     }
-
     void adding_item() {
         item newItem;
         newItem.input();
         equipment.push_back(newItem);
+        newItem.id = id;
     }
 
     void output_items() {
@@ -103,19 +136,47 @@ public:
             cout << "==========================================================" << endl;
         }
     }
+    friend ostream& operator<<(ostream& os, const character& character) {
+        os << character.name << endl;
+        os << character.level << endl;
+        os << character.id << endl;
+        os << character.equipment.size() << endl;
+        for (int i = 0; i < character.equipment.size(); i++) {
+            os << character.equipment[i];
+        }
+        return os;
+    }
+
+    friend istream& operator>>(istream& is, character& character) {
+        getline(is, character.name);
+        is >> character.level;
+        is >> character.id;
+        is.ignore();
+
+        int equipmentSize;
+        is >> equipmentSize;
+        is.ignore();
+
+        character.equipment.clear();
+        for (int i = 0; i < equipmentSize; i++) {
+            item it;
+            is >> it;
+            character.equipment.push_back(it);
+        }
+        return is;
+    }
 };
 
 class gameworld {
 public:
     vector<character> characters;
     vector<item> items;
-
     character prototype_character;
     item prototype_item;
 
     gameworld() {
-        characters.push_back(prototype_character);
         prototype_character.iname();
+        characters.push_back(prototype_character);
     }
 
     void adding_character() {
@@ -125,9 +186,27 @@ public:
     }
 
     void adding_item() {
-        item newItem;
-        newItem.input();
-        items.push_back(newItem);
+        while (true) {
+            cout << "Выберите персонажа для добавления предмета:" << endl;
+            for (int i = 0; i < characters.size(); i++) {
+                cout << i + 1 << ". " << characters[i].name << endl;
+            }
+            int choice;
+            cin >> choice;
+            cin.ignore();
+            if (choice < 1 || choice > characters.size()) {
+                cout << "Неверный выбор персонажа." << endl;
+            }
+            else {
+                character& selected_character = characters[choice - 1];
+                item newItem;
+                newItem.input();
+                newItem.id = selected_character.id;
+                selected_character.equipment.push_back(newItem);
+                items.push_back(newItem);
+                break;
+            }
+        }
     }
 
     void search_character() {
@@ -136,7 +215,6 @@ public:
             cout << "Введи имя персонажа или введи 2 чтобы завершить поиск: " << endl;
             getline(cin, line);
             if (line == "2") break;
-
             bool found = false;
             for (int i = 0; i < characters.size(); i++) {
                 if (characters[i].name == line) {
@@ -192,6 +270,54 @@ public:
             cout << "==========================================================" << endl;
         }
     }
+    void save_characters(string filename) {
+        ofstream file(filename);
+        file << characters.size() << endl;
+        for (int i = 0; i < characters.size(); i++) {
+            file << characters[i];
+        }
+        file.close();
+        cout << "Данные о персонажах успешно сохранены в файл " << filename << "!" << endl;
+    }
+
+    void save_items(string filename) {
+        ofstream file(filename);
+        file << items.size() << endl;
+        for (int i = 0; i < items.size(); i++) {
+            file << items[i];
+        }
+        file.close();
+        cout << "Данные о предметах успешно сохранены в файл " << filename << "!" << endl;
+    }
+    void load_characters(string filename) {
+        ifstream file(filename);
+        int characterCount;
+        file >> characterCount;
+        file.ignore();
+        characters.clear();
+        for (int i = 0; i < characterCount; i++) {
+            character none;
+            file >> none;
+            characters.push_back(none);
+        }
+        file.close();
+        cout << "Данные о персонажах успешно загружены из файла " << filename << "!" << endl;
+    }
+
+    void load_items(string filename) {
+        ifstream file(filename);
+        int itemCount;
+        file >> itemCount;
+        file.ignore();
+        items.clear();
+        for (int i = 0; i < itemCount; i++) {
+            item none;
+            file >> none;
+            items.push_back(none);
+        }
+        file.close();
+        cout << "Данные о предметах успешно загружены из файла " << filename << "!" << endl;
+    }
 };
 
 void demo(gameworld& prototype) {
@@ -202,7 +328,9 @@ void demo(gameworld& prototype) {
         cout << "3. Поиск персонажа" << endl;
         cout << "4. Поиск предмета" << endl;
         cout << "5. Вывод информации о мире" << endl;
-        cout << "6. Выход" << endl;
+        cout << "6. Сохранение в файл" << endl;
+        cout << "7. Выгрузка из файла" << endl;
+        cout << "8. Выход" << endl;
         int answer;
         cin >> answer;
         cin.ignore();
@@ -222,6 +350,14 @@ void demo(gameworld& prototype) {
             prototype.output_world_info();
         }
         else if (answer == 6) {
+            prototype.save_characters("characters.txt");
+            prototype.save_items("items.txt");
+        }
+        else if (answer == 7) {
+            prototype.load_characters("characters.txt");
+            prototype.load_items("items.txt");
+        }
+        else if (answer == 8) {
             cout << "Выход из программы." << endl;
             break;
         }
@@ -234,6 +370,7 @@ void demo(gameworld& prototype) {
 int main() {
     setlocale(LC_ALL, "ru");
     system("chcp 1251>nul");
+    srand(time(NULL));
     gameworld world;
     demo(world);
     return 0;
